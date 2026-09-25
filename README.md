@@ -13,6 +13,8 @@ short_description: Offline Arabic/English OCR for IDs, Contracts & Invoices
 
 OmniOCR
 
+[![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md-dark.svg)](https://huggingface.co/spaces/Zeyadmohamed21/OCR)
+
 Offline Arabic and English OCR with a FastAPI API and an optional Gradio interface. The service uses EasyOCR for text recognition and Python-based processing for layout analysis, document classification, and structured field extraction.
 
 > OCR is probabilistic. Review low-confidence output and verify names, dates, amounts, and identifiers against the source document before using them in a decision or transaction.
