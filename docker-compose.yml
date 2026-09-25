@@ -1,0 +1,34 @@
+services:
+  ocr-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ocr-microservice:latest
+    container_name: ocr_microservice
+    restart: unless-stopped
+    ports:
+      - "8000:7860"
+    environment:
+      - PORT=7860
+      - WEB_CONCURRENCY=1
+      - OMP_NUM_THREADS=2
+      - MKL_NUM_THREADS=2
+      - LOGGING_LEVEL=INFO
+      - CONFIDENCE_THRESHOLD=0.5
+    volumes:
+      # Persist application logs to host
+      - ./logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s

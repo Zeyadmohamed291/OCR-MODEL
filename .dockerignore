@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Sensitive data & environment files
+.env
+.env.*
+!.env.example
+
+# Large model weights (handled via build-time pre-caching)
+models/
+
+# Testing code & cache (preserving sample images for /samples endpoint)
+tests/__pycache__/
+tests/test_*.py
+*.onnx
+
+# IDE and Editor settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Deployment artifacts
+.vercel/
+dist/
+build/
+package-lock.json
+
+# Local logs
+logs/
+*.log
