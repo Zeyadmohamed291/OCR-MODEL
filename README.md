@@ -1,4 +1,17 @@
-# OmniOCR
+---
+title: OmniOCR Pro — Arabic & English Document OCR
+emoji: 📄
+colorFrom: indigo
+colorTo: purple
+sdk: gradio
+sdk_version: 6.28.0
+app_file: app.py
+pinned: false
+license: mit
+short_description: Offline Arabic/English OCR for IDs, Contracts & Invoices
+---
+
+OmniOCR
 
 Offline Arabic and English OCR with a FastAPI API and an optional Gradio interface. The service uses EasyOCR for text recognition and Python-based processing for layout analysis, document classification, and structured field extraction.
 
