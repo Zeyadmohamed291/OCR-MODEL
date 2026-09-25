@@ -98,7 +98,22 @@ def run_gradio_ocr(input_image, input_file=None):
 # ---------------------------------------------------------------------------
 # Build Gradio Blocks UI
 # ---------------------------------------------------------------------------
-with gr.Blocks(title="DocuExtract Studio | OmniOCR Pro") as demo:
+RTL_CSS = """
+    /* RTL Arabic text display fix */
+    .rtl-output textarea {
+        direction: rtl !important;
+        text-align: right !important;
+        unicode-bidi: embed !important;
+        font-family: 'Segoe UI', 'Arial', 'Tahoma', sans-serif !important;
+        line-height: 1.8 !important;
+        font-size: 14px !important;
+    }
+    .rtl-output label {
+        direction: ltr;
+    }
+"""
+
+with gr.Blocks(title="DocuExtract Studio | OmniOCR Pro", css=RTL_CSS) as demo:
     gr.Markdown(
         """
         # 📄 DocuExtract Studio (OmniOCR Pro)
@@ -130,7 +145,8 @@ with gr.Blocks(title="DocuExtract Studio | OmniOCR Pro") as demo:
             out_fields = gr.JSON(label="Extracted Structured Fields")
             out_text = gr.TextArea(
                 label="Extracted Full Text (Bidirectional Layout)",
-                lines=8
+                lines=8,
+                elem_classes=["rtl-output"],
             )
 
     extract_btn.click(

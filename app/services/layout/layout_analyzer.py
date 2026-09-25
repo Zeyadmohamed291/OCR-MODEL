@@ -34,7 +34,8 @@ class LayoutAnalyzer:
 
         layout_lines: List[LayoutLine] = []
         for l_num in sorted(lines_dict.keys()):
-            line_blocks = lines_dict[l_num]
+            # Sort blocks by their reading_order so RTL Arabic lines join correctly
+            line_blocks = sorted(lines_dict[l_num], key=lambda b: b.reading_order)
             line_text = " ".join(b.text for b in line_blocks)
             raw_text = " ".join(b.raw_text or b.text for b in line_blocks)
             normalized_text = normalize_logical_text(line_text)

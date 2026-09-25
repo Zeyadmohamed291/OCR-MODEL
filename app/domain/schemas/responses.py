@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Any, Dict, List
 from app.domain.schemas.core import (
     DocumentMeta, LayoutInfo, LayoutSection, LayoutTable, OCRMeta,
@@ -40,13 +40,13 @@ class OCRResponse(BaseModel):
     raw_text: str = ""
     normalized_text: str = ""
     needs_review: bool = False
-    uncertain_lines: List[int] = []
+    uncertain_lines: List[int] = Field(default_factory=list)
     layout: Optional[LayoutInfo] = None
     fields: Optional[Dict[str, Any]] = None
     field_details: Optional[Dict[str, Dict[str, Any]]] = None
-    structured_fields: List[StructuredField] = []
-    sections: List[LayoutSection] = []
-    tables: List[LayoutTable] = []
+    structured_fields: List[StructuredField] = Field(default_factory=list)
+    sections: List[LayoutSection] = Field(default_factory=list)
+    tables: List[LayoutTable] = Field(default_factory=list)
     ocr: Optional[OCRMeta] = None
     quality: Optional[ImageQualityMetrics] = None
     processing: Optional[ProcessingMeta] = None
@@ -72,5 +72,5 @@ class DocumentOCRResponse(BaseModel):
     raw_text: str
     normalized_text: str
     needs_review: bool
-    pages: List[DocumentPageResponse]
+    pages: List[DocumentPageResponse] = Field(default_factory=list)
     processing_time_ms: float

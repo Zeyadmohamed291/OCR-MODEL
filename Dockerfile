@@ -86,4 +86,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
 # 8. Production Server Execution
 # Includes proxy headers for cloud reverse proxies and keep-alive timeout
 # ------------------------------------------------------------------------------
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860} --workers ${WEB_CONCURRENCY:-1} --proxy-headers --forwarded-allow-ips='*' --timeout-keep-alive 65"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860} --workers ${WEB_CONCURRENCY:-1} --proxy-headers --forwarded-allow-ips=\"${FORWARDED_ALLOW_IPS:-127.0.0.1}\" --timeout-keep-alive 65"]

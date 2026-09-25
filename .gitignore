@@ -1,25 +1,80 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+
+# Virtual environments
 venv/
 .venv/
 env/
-models/
+
+# Environment variables (keep .env.example as template)
 .env
-.pytest_cache/
-tests/__pycache__/
-app/__pycache__/
-scripts/__pycache__/
+.env.*
+!.env.example
+
+# ML model weights (large binary files — download separately)
+models/
+
+# Logs
 logs/
 *.log
+
+# Testing & coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
 *.onnx
 test.onnx
 test_dict.txt
 package-lock.json
+
+# Vercel / deployment internals
 .vercel/
-.vscode/
-dist/
+
+# Graphify tool output (not part of the OCR project)
+graphify-out/
+graphify-8/
+.graphifyignore
+
+# Internal artifacts directory
+artifacts/
+
+# Test media files
 tests/*.jpg
 tests/*.jpeg
 tests/*.png
 tests/*.webp
+tests/*.pdf
+
+# Internal reports & design docs (not for public repo)
+AUDIT_REPORT.md
+GRAPH_OPTIMIZATION.md
+OCR_EVALUATION.md
+OCR_EVALUATION_DATASET.md
+OCR_FIXES.md
+ocr_architectural_design.md
+
+# Vercel (backend is too large for Vercel serverless)
+VERCEL_DEPLOYMENT.md
+vercel.json
+
+# Internal guides
+app/services/layout/react_bidi_guide.md
+
+

@@ -23,9 +23,14 @@ htmlcov/
 # Large model weights (handled via build-time pre-caching)
 models/
 
-# Testing code & cache (preserving sample images for /samples endpoint)
-tests/__pycache__/
-tests/test_*.py
+# Local-only evaluation, development tools, and generated analysis output
+tests/
+artifacts/
+scripts/
+graphify-8/
+graphify-out/
+*.md
+!.dockerignore
 *.onnx
 
 # IDE and Editor settings

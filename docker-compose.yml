@@ -15,6 +15,8 @@ services:
       - MKL_NUM_THREADS=2
       - LOGGING_LEVEL=INFO
       - CONFIDENCE_THRESHOLD=0.5
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-[]}
+      - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:-127.0.0.1}
     volumes:
       # Persist application logs to host
       - ./logs:/app/logs

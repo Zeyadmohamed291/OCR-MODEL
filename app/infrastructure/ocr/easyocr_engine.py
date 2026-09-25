@@ -63,6 +63,14 @@ class EasyOCREngine(AbstractOCREngine):
         if image.dtype != np.uint8:
             raise OCRFailureError("OCR input image must use uint8 pixel values.")
         start_time = time.time()
+
+        # EasyOCR otherwise uses mag_ratio=1.0, which leaves small page scans
+        # (like the ~716x970 contract scan in the runtime logs) at native size.
+        # Magnify only small inputs so Arabic dots and thin strokes occupy more
+        # recognizer pixels. Large pages remain uncropped/unmagnified and are
+        # still bounded by canvas_size.
+        longest_side = max(img_height, img_width)
+        mag_ratio = 1.5 if longest_side <= 1200 else 1.25 if longest_side <= 1800 else 1.0
         
         try:
             # Tuned Production Inference Execution
@@ -80,6 +88,7 @@ class EasyOCREngine(AbstractOCREngine):
                     min_size=10,
                     bbox_min_score=0.15,
                     canvas_size=settings.OCR_CANVAS_SIZE,
+                    mag_ratio=mag_ratio,
                     width_ths=settings.OCR_WIDTH_THRESHOLD,
                 )
         except Exception as e:

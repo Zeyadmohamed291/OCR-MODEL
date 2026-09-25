@@ -1,365 +1,227 @@
----
-title: OmniOCR Pro
-emoji: 📄
-colorFrom: blue
-colorTo: indigo
-sdk: gradio
-app_file: app.py
-pinned: false
----
+# OmniOCR
 
-# 📄 Universal Document OCR & Intelligence Microservice
+Offline Arabic and English OCR with a FastAPI API and an optional Gradio interface. The service uses EasyOCR for text recognition and Python-based processing for layout analysis, document classification, and structured field extraction.
 
-<div align="center">
+> OCR is probabilistic. Review low-confidence output and verify names, dates, amounts, and identifiers against the source document before using them in a decision or transaction.
 
-[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![EasyOCR](https://img.shields.io/badge/Engine-EasyOCR%20(100%25%20Offline)-4B8BBE)](https://github.com/JaidedAI/EasyOCR)
-[![Tests](https://img.shields.io/badge/Tests-97%2F97%20Passed-brightgreen?logo=pytest&logoColor=white)](https://docs.pytest.org/)
-[![Unicode Bidi](https://img.shields.io/badge/Bidi-UBA%20Compliant-blueviolet)](#-bidi-safe-spatial-layout-analysis)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+## Features
 
-**An enterprise-grade, high-performance Document Intelligence and OCR Microservice built with FastAPI, EasyOCR, and a Bidirectional Spatial Layout Engine.**  
-*Specialized in complex Arabic calligraphy, bidirectional mixed scripts, and zero-leakage offline processing.*
+- Local EasyOCR inference for Arabic and English; no hosted OCR or LLM API is called by the application.
+- Adaptive image preparation, bounded low-confidence/orientation retries, and confidence indicators.
+- RTL/LTR reading-order reconstruction for Arabic text mixed with English and numbers.
+- Heuristic classification and field extraction for common IDs, invoices, receipts, contracts, CVs, passports, driving licenses, and bank documents.
+- Single-image OCR and multi-page PDF/TIFF processing.
+- FastAPI endpoints with OpenAPI docs and a browser viewer; optional Gradio upload interface.
+- Upload, page-count, image-dimension, and rendered-pixel limits.
 
-[Features](#-key-features) • [Architecture](#-system-architecture) • [Quick Start](#-quick-start) • [Interactive Viewer](#-interactive-web-viewer) • [API Reference](#-api-endpoints) • [Project Structure](#-project-structure)
+EasyOCR weights are stored locally under `MODEL_DIR`. The first run may need internet access to download missing model weights. After the required weights are present, recognition runs locally.
 
-</div>
-
----
-
-## 🌟 Key Features
-
-### 1. 🔒 100% Offline & Privacy-First
-- Zero dependencies on external cloud APIs or third-party networks.
-- All neural inference runs locally on the host device (CPU/GPU).
-- Sensitive legal, national identity, and financial documents never leave your server perimeter.
-
-### 2. 🧠 Intelligent Arabic OCR Post-Corrector (`ArabicOCRCorrector`)
-- **Calligraphic Egyptian Header Resolution:** Custom contextual lookahead regex engine fixing severe EasyOCR calligraphy distortions (e.g. `جمهوزكنذف صنالج بينمنا` ➔ `جمهورية مصر العربية`).
-- **Official Card Titles:** Normalization of fragmented tokens into canonical `بطاقة تحقيق الشخصية`.
-- **Phonetic & Shape Ambiguity Resolution:** Fixes terminal character confusion (e.g. `محمل` ➔ `محمد`, `أحمل` ➔ `أحمد`, `خالل` ➔ `خالد`).
-- **Composite Name Repair:** Reconstructs broken divine prefixes (e.g. `عبا الشفيع` ➔ `عبد الشفيع`).
-- **Administrative Vocabulary:** Automatic correction and canonicalization of Egyptian governorates and municipality indicators.
-
-### 3. 📐 Bidi-Safe Spatial Layout Engine (Unicode UBA Compliant)
-- Eliminates string-reversal anti-patterns.
-- Preserves natural Right-to-Left (RTL) reading order for Arabic text while correctly maintaining embedded Left-to-Right (LTR) numeric sequences and Latin identifiers.
-- Automatic column detection, vertical line clustering, and reading order sequencing.
-
-### 4. 🗂️ Universal Multi-Document Classification & Extraction
-The microservice automatically classifies uploaded documents and routes them to specialized extraction pipelines:
-- **🪪 Egyptian National ID Cards:** 14-digit mathematical checksum verification, birth date decoding, gender identification, governorate resolution, and multi-line name/address parsing.
-- **🧾 Invoices & Receipts:** Merchant name, invoice numbers, line items, tax/VAT, and total amounts.
-- **🛂 Passports:** ICAO 9303 Machine Readable Zone (MRZ) extraction and validation.
-- **📜 Contracts & Legal Documents:** Parties identification, execution dates, and clause detection.
-- **💼 Resumes & CVs:** Candidate contact details, education history, and skill sections.
-- **🚗 Driver Licenses & Bank Documents:** Account numbers, IBANs, and issuance dates.
-
-### 5. 🖥️ Interactive Modern Web Viewer (`/viewer`)
-- Built-in, responsive dark-mode document laboratory accessible via `/viewer`.
-- Side-by-side inspection tabs:
-  - **Structured Fields:** Extracted entity cards with individual confidence scores and validation tags.
-  - **Lines & Reading Order:** Visual inspection of bounding boxes and reading order tokens.
-  - **Tables:** Structured tabular view of detected grid contents.
-  - **Full Text:** Raw and layout-ordered document text.
-  - **JSON Response:** Full syntax-highlighted API output.
-
----
-
-## 🏗️ System Architecture
+## Architecture
 
 ```mermaid
 flowchart TD
-    A[Client Request: Image / Document] --> B[FastAPI Gateway: /ocr/extract]
-    
-    subgraph Preprocessing ["1. Image Preprocessing & Security"]
-        B --> C[Security Validator: Magic Bytes & Anti-ReDoS]
-        C --> D[Quality Evaluator: Blur, Contrast, Skew & Orientation]
-        D --> E[Multi-Pass Image Enhancement]
-    end
-
-    subgraph OCR ["2. Local Neural OCR Engine"]
-        E --> F[EasyOCR Neural Reader: ar + en]
-        F --> G[Border Noise Filter & Coordinate Normalization]
-    end
-
-    subgraph TextProcessing ["3. Arabic Correction & Bidi Layout"]
-        G --> H[ArabicOCRCorrector: Calligraphy & Name Disambiguation]
-        H --> I[Spatial Layout Analyzer & Reading Order Sorter]
-        I --> J[Language Detector: ar / en / mixed]
-    end
-
-    subgraph Understanding ["4. Classification & Structured Extraction"]
-        J --> K[Universal Document Classifier]
-        K --> L{Document Type}
-        L -->|id_card| M[IDCardExtractor: 14-Digit Checksum & Heuristics]
-        L -->|invoice / receipt| N[Financial Extractors: Amounts & Tables]
-        L -->|passport| O[PassportExtractor: ICAO 9303 MRZ]
-        L -->|contract / cv / other| P[Domain-Specific Modular Extractors]
-    end
-
-    M & N & O & P --> Q[Universal Response Builder]
-    Q --> R[Client JSON / Web Viewer UI]
+    A[Image or document upload] --> B[Validate bytes, signature, format, and size]
+    B --> C[Decode and normalize orientation]
+    C --> D[Measure image quality]
+    D --> E[Adaptive geometry and image preparation]
+    E --> F[EasyOCR Arabic and English]
+    F --> G{Weak or rotated result?}
+    G -->|No| H[Reading order and layout]
+    G -->|Yes, bounded| I[Conditional OCR retry]
+    I --> H
+    H --> J[Language and document classification]
+    J --> K[Deterministic field extraction and validation]
+    K --> L[Structured API response]
 ```
 
----
+OCR orchestration is implemented as a bounded Python pipeline with conditional routing in `app/services/ocr/passes.py`; the application does not use LangGraph or call an LLM. The conditional retry is intended for weak or orientation-suspect OCR results, not every upload.
 
-## 📁 Project Structure
+## Requirements
+
+- Python 3.10 or newer (Docker uses Python 3.11).
+- CPU and memory for PyTorch/EasyOCR inference. The model and image size affect latency and memory use.
+- EasyOCR model weights. The application downloads missing weights on first initialization unless they are already in `MODEL_DIR`.
+
+## Quick start
+
+### 1. Create an environment and install dependencies
+
+```bash
+git clone <repository-url>
+cd <repository-directory>
+python -m venv .venv
+```
+
+Activate the environment:
+
+```powershell
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+```
+
+```bash
+# Linux or macOS
+source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
+```
+
+### 2. Configure the service
+
+Copy `.env.example` to `.env` and adjust values for the machine if needed. Configuration is loaded from environment variables or `.env`; defaults are defined in `app/core/config.py`.
+
+### 3. Start the API
+
+```bash
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+- Swagger UI: <http://127.0.0.1:8000/docs>
+- OpenAPI schema: <http://127.0.0.1:8000/openapi.json>
+- Document viewer: <http://127.0.0.1:8000/viewer>
+- Health: <http://127.0.0.1:8000/health>
+
+To start the Gradio interface with the API routes attached:
+
+```bash
+python app.py
+```
+
+The Gradio interface uses port `7860` by default. Set `PORT` to change it.
+
+### Docker
+
+The Docker image runs the FastAPI service (including `/viewer`) on port `7860` inside the container. From the repository root:
+
+```bash
+docker compose up --build
+```
+
+The compose file publishes it at <http://127.0.0.1:8000>. The image build preloads EasyOCR weights, so its first build requires access to the model host and produces a larger image than a source-only API.
+
+When deploying behind a reverse proxy, set the Docker-only `FORWARDED_ALLOW_IPS` variable to the trusted proxy IP addresses or CIDRs. Do not use `*` on a public deployment.
+
+## API
+
+### `POST /ocr/extract`
+
+Processes one raster image. Send a multipart form field named `file`.
+
+Supported detected image formats: JPEG, PNG, WebP, BMP, and TIFF. This endpoint accepts a single-frame image; use `/ocr/document` for multi-page files.
+
+```bash
+curl -X POST http://127.0.0.1:8000/ocr/extract \
+  -H "accept: application/json" \
+  -F "file=@document.jpg"
+```
+
+### `POST /ocr/document`
+
+Processes all pages in a PDF or multi-frame TIFF, and can also process supported raster images. Limits are configured by `MAX_UPLOAD_SIZE_MB` and `DOCUMENT_MAX_PAGES`; rendered PDF pages are bounded by the image-processing limits.
+
+```bash
+curl -X POST http://127.0.0.1:8000/ocr/document \
+  -H "accept: application/json" \
+  -F "file=@document.pdf"
+```
+
+### `GET /health`
+
+Returns service status, version, and whether the EasyOCR engine has been initialized. A healthy HTTP response does not guarantee that optional model weights were loaded successfully; check the service logs if OCR initialization fails.
+
+## Response data
+
+The image endpoint returns an `OCRResponse`. Key properties include:
+
+| Field | Meaning |
+|---|---|
+| `text` | Layout-ordered OCR text |
+| `raw_text` | OCR transcription before normalized output is assembled |
+| `normalized_text` | Text with whitespace and Unicode-space normalization; it is not a language-model rewrite |
+| `confidence` | Mean EasyOCR detection confidence, from `0` to `1` |
+| `needs_review` | Whether the result is empty or contains low-confidence lines |
+| `uncertain_lines` | Line numbers below the configured confidence threshold |
+| `fields` | Deterministically extracted fields, when available |
+| `structured_fields` | Field values with confidence and validation metadata |
+| `quality` | Image quality metrics and preprocessing/retry notes |
+| `processing` | Stage timing details |
+
+The document endpoint returns page-level `OCRResponse` objects plus combined text. See `/docs` for the complete schemas. Document-specific field extractors may normalize candidate field values; compare critical fields with `raw_text` and the source image.
+
+## Configuration
+
+| Variable | Default | Description |
+|---|---:|---|
+| `MODEL_DIR` | `models/easyocr` | Local EasyOCR model directory |
+| `CONFIDENCE_THRESHOLD` | `0.5` | Line/detection threshold used to mark results for review |
+| `OCR_RETRY_CONFIDENCE` | `0.60` | Confidence threshold that can trigger a bounded retry |
+| `OCR_ORIENTATION_CONFIDENCE` | `0.30` | Very-low-confidence threshold for orientation candidates |
+| `OCR_CANVAS_SIZE` | `3200` | Maximum EasyOCR inference canvas size |
+| `OCR_WIDTH_THRESHOLD` | `0.5` | EasyOCR horizontal text grouping threshold |
+| `DOCUMENT_MAX_PAGES` | `20` | Maximum pages/frames per document |
+| `DOCUMENT_DPI` | `200` | PDF rendering resolution, subject to pixel limits |
+| `MAX_UPLOAD_SIZE_MB` | `10` | Maximum upload size |
+| `LOGGING_LEVEL` | `INFO` | Application log level |
+| `CORS_ALLOW_ORIGINS` | `[]` | JSON array of permitted browser origins; same-origin access needs no CORS entry |
+
+For a separately hosted frontend, set `CORS_ALLOW_ORIGINS` to a JSON array containing its exact origin, such as `CORS_ALLOW_ORIGINS=["https://ocr.example.com"]`. Credentials are not enabled by the service.
+
+## Run checks
+
+Run the test suite from the repository root:
+
+```bash
+python -m pytest -q
+```
+
+`requirements-dev.txt` installs the application dependencies and pytest. This command is documented for contributors; no test run is claimed by this README.
+
+The project also includes scripts for evaluating labeled OCR samples:
+
+```bash
+python scripts/evaluate_ocr.py --help
+python scripts/benchmark_easyocr.py --help
+```
+
+Evaluation scores are meaningful only when inputs have reviewed ground-truth text. A small sample or synthetic degradation is not a general accuracy guarantee.
+
+## Repository map
 
 ```text
-OCR-MODEL/
-├── app/
-│   ├── api/
-│   │   ├── dependencies/             # Engine singleton caches & dependency injection
-│   │   │   └── ocr.py
-│   │   └── v1/
-│   │       └── routers/
-│   │           ├── ocr.py            # Primary OCR & extraction endpoints
-│   │           └── viewer.py         # Modern Web Viewer GUI
-│   ├── core/                         # Settings, exceptions, logging & middleware
-│   │   ├── config.py
-│   │   ├── exceptions.py
-│   │   └── exception_handlers.py
-│   ├── domain/                       # Core Pydantic data schemas & interfaces
-│   │   ├── interfaces/
-│   │   │   └── ocr_engine.py
-│   │   └── schemas/
-│   │       ├── core.py               # TextBlock, BoundingBox, OCRResult schemas
-│   │       └── responses.py          # UniversalAPIResponse, StructuredField schemas
-│   ├── infrastructure/               # Concrete OCR engine implementations
-│   │   └── ocr/
-│   │       └── easyocr_engine.py     # Local EasyOCR neural engine
-│   ├── services/                     # Business logic and domain pipelines
-│   │   ├── classification/           # Document type classifier
-│   │   ├── extraction/               # Specialized modular extractors
-│   │   │   ├── id_card.py            # Egyptian ID parser with checksum validation
-│   │   │   ├── invoice.py            # Invoice & bill extractor
-│   │   │   ├── receipt.py            # Thermal & point-of-sale receipt extractor
-│   │   │   ├── passport.py           # Passport ICAO MRZ validator
-│   │   │   ├── contract.py           # Legal contracts parser
-│   │   │   ├── cv.py                 # Resume parser
-│   │   │   ├── driver_license.py     # Driving license parser
-│   │   │   ├── bank_document.py      # Bank statement extractor
-│   │   │   ├── registry.py           # Extractor registry pattern
-│   │   │   └── validation.py         # Mathematical checksums (ID, MRZ, dates)
-│   │   ├── image_processing/         # Preprocessing, quality & geometry
-│   │   │   ├── geometry.py
-│   │   │   ├── loader.py
-│   │   │   ├── preprocessor.py
-│   │   │   ├── quality.py
-│   │   │   └── validator.py
-│   │   ├── language/                 # Script and language detection
-│   │   │   └── language_detector.py
-│   │   ├── layout/                   # Bidi formatting, spatial clustering & tables
-│   │   │   ├── bidi_formatter.py
-│   │   │   ├── layout_analyzer.py
-│   │   │   └── reading_order.py
-│   │   ├── ocr/                      # Multi-signal evaluation & fusion
-│   │   │   └── evaluator.py
-│   │   └── text_processing/          # Proprietary Arabic domain corrector
-│   │       └── arabic_corrector.py   # Calligraphic header & name disambiguation
-│   └── main.py                       # FastAPI application factory
-├── tests/                            # Comprehensive test suite (97 tests)
-│   ├── test_universal_system.py
-│   ├── test_modular_extractors.py
-│   ├── test_production_hardening.py
-│   ├── test_text_ordering_bidi.py
-│   ├── test_preprocessing_pipeline.py
-│   ├── test_document_understanding.py
-│   └── test_ocr_optimization.py
-├── .env.example                      # Configuration template
-├── requirements.txt                  # Python dependencies
-└── README.md                         # Documentation
+app/
+  api/                 FastAPI routes and dependency wiring
+  core/                Configuration, logging, and error handling
+  domain/              OCR interfaces and response/data schemas
+  infrastructure/ocr/  EasyOCR engine adapter
+  services/
+    image_processing/  Upload decoding, quality checks, and preprocessing
+    ocr/               Shared OCR pipeline, retries, and evaluation helpers
+    layout/            Reading order, bidi handling, and layout analysis
+    classification/    Document type classification
+    extraction/        Document-specific field extractors and validators
+public/                Browser viewer
+scripts/               Evaluation and debugging utilities
+tests/                 Unit and regression tests
 ```
 
----
+## Evaluation and design notes
 
-## ⚡ Quick Start
+- [OCR audit](AUDIT_REPORT.md)
+- [OCR fixes](OCR_FIXES.md)
+- [OCR evaluation](OCR_EVALUATION.md)
+- [Graph/workflow optimization notes](GRAPH_OPTIMIZATION.md)
 
-### 1. Prerequisites
-- **Python 3.10, 3.11, or 3.12**
-- **Git**
+These reports record prior inspection and evaluation work. Check their dates and stated test environment before treating a result as current.
 
-### 2. Clone and Setup Environment
+## Limitations
 
-```bash
-# Clone the repository
-git clone https://github.com/Zeyadmohamed291/OCR-MODEL.git
-cd OCR-MODEL
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows (PowerShell):
-.\venv\Scripts\Activate.ps1
-# Windows (CMD):
-.\venv\Scripts\activate.bat
-# Linux / macOS:
-source venv/bin/activate
-
-# Install required dependencies
-pip install -r requirements.txt
-```
-
-### 3. Configure Settings
-
-Copy `.env.example` to `.env`:
-
-```bash
-# Windows:
-copy .env.example .env
-# Linux / macOS:
-cp .env.example .env
-```
-
-EasyOCR runs locally by default. Optional OCR settings and their defaults are
-defined in `app/core/config.py`.
-
-### 4. Launch the Server
-
-```bash
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-- **Interactive Swagger Docs:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **Web Document Viewer:** [http://127.0.0.1:8000/viewer](http://127.0.0.1:8000/viewer)
-- **Health Check Endpoint:** [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
-
----
-
-## 🖥️ Interactive Web Viewer
-
-Open your browser at `http://127.0.0.1:8000/viewer` to access the built-in testing interface.
-
-Features include:
-1. **Direct Drag-and-Drop:** Upload invoices, IDs, receipts, contracts, or screenshots.
-2. **Visual Tabs:** Instantly switch between parsed structured fields, reading order blocks, extracted tables, full text, and raw JSON.
-3. **Telemetry Dashboard:** Live display of inference time, average confidence, document classification, and script direction.
-
----
-
-## 🔌 API Endpoints
-
-### 1. Extract Document Intelligence
-`POST /ocr/extract`
-
-Processes an uploaded image file, applies image quality checks, executes OCR, performs bidirectional layout reconstruction, classifies the document, and extracts structured key-value entities.
-
-**Request:**
-- `Content-Type`: `multipart/form-data`
-- `file`: Image file (`.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`)
-
-**cURL Example:**
-```bash
-curl -X POST "http://127.0.0.1:8000/ocr/extract" \
-     -H "accept: application/json" \
-     -F "file=@sample_id.jpg"
-```
-
-**Response Example (Egyptian National ID):**
-```json
-{
-  "success": true,
-  "document_type": "id_card",
-  "confidence": 0.85,
-  "processing_time_ms": 1420.5,
-  "fields": {
-    "national_id": "29801011401234",
-    "name": "أحمد محمد عبد الله محمود",
-    "address": "15 شارع النصر المعادي القاهرة",
-    "birth_date": "1998-01-01",
-    "gender": "ذكر",
-    "governorate": "القاهرة",
-    "governorate_code": "01"
-  },
-  "structured_fields": [
-    {
-      "field_name": "national_id",
-      "label": "National ID",
-      "value": "29801011401234",
-      "confidence": 0.98,
-      "is_valid": true,
-      "validation_note": "Valid Egyptian National ID"
-    },
-    {
-      "field_name": "name",
-      "label": "Name",
-      "value": "أحمد محمد عبد الله محمود",
-      "confidence": 0.94,
-      "is_valid": true
-    },
-    {
-      "field_name": "address",
-      "label": "Address",
-      "value": "15 شارع النصر المعادي القاهرة",
-      "confidence": 0.91,
-      "is_valid": true
-    }
-  ],
-  "layout": {
-    "reading_order": "rtl",
-    "lines": [
-      { "line_number": 1, "text": "جمهورية مصر العربية", "direction": "rtl" },
-      { "line_number": 2, "text": "بطاقة تحقيق الشخصية", "direction": "rtl" },
-      { "line_number": 3, "text": "أحمد", "direction": "rtl" },
-      { "line_number": 4, "text": "محمد عبد الله محمود", "direction": "rtl" },
-      { "line_number": 5, "text": "١٥ شارع النصر المعادي", "direction": "auto" },
-      { "line_number": 6, "text": "محافظة القاهرة", "direction": "rtl" }
-    ]
-  },
-  "ocr": {
-    "engine": "easy",
-    "confidence": 0.85
-  },
-  "quality": {
-    "is_blurry": false,
-    "blur_score": 440.6,
-    "resolution_ok": true
-  }
-}
-```
-
----
-
-### 2. Health & Readiness Check
-`GET /health`
-
-Returns service status and indicates whether EasyOCR neural models are pre-loaded into memory.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "engine_ready": true,
-  "version": "1.0.0"
-}
-```
-
----
-
-## 🧪 Testing & Validation
-
-The project includes an extensive test suite covering all modules:
-
-```bash
-# Run the complete test suite
-python -m pytest tests/ -v
-```
-
-### Test Suite Breakdown:
-- **`test_universal_system.py`**: End-to-end classification and extraction across all supported document types.
-- **`test_modular_extractors.py`**: Unit tests for modular extractor schemas, isolated confidences, and validation logic.
-- **`test_production_hardening.py`**: 24 edge-case scenarios (perspective distortion, low contrast, blur, magic-byte spoofing, anti-ReDoS security).
-- **`test_text_ordering_bidi.py`**: Unicode Bidirectional Algorithm (UBA) compliance, multi-digit ID preservation, and mixed-direction layout.
-- **`test_preprocessing_pipeline.py`**: Image quality assessment, auto-rotation, and deskew algorithms.
-- **`test_ocr_optimization.py`**: EasyOCR rich inference, multi-pass merging, and script detection.
-
-**Status:** `97 passed in ~18s (100% Success Rate)`
-
----
-
-## 📄 License
-
-Distributed under the **MIT License**. See `LICENSE` for more information.
+- Small, blurred, compressed, handwritten, or low-contrast text can be misrecognized. Upscaling cannot restore details absent from the input.
+- Confidence is a model score, not a calibrated probability that a word or field is correct.
+- Reading order and table detection use geometric heuristics; complex layouts can still be ordered incorrectly.
+- Field extraction is rule-based and document-dependent. Validate critical values against the source image.
+- No license file is currently included. Add a license only after deciding how the project may be reused.

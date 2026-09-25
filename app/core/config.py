@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     
     # Logging
     LOGGING_LEVEL: str = "INFO"
+
+    # Same-origin access needs no CORS permission. Configure trusted frontend
+    # origins explicitly when the API is called from another web origin.
+    CORS_ALLOW_ORIGINS: List[str] = Field(default_factory=list)
     
     model_config = SettingsConfigDict(
         # .env file is optional — gracefully ignored if not present (e.g. on HF Spaces)

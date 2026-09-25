@@ -64,6 +64,16 @@ def run_ocr_passes(engine, primary, variants, quality):
                     (max(1, round(image.shape[1] * scale)), max(1, round(image.shape[0] * scale))),
                     interpolation=cv2.INTER_AREA,
                 )
+            elif largest <= 1200:
+                # A conditional high-resolution retry gives small, uncertain
+                # print more recognizer pixels. It is deliberately limited to
+                # the fallback path so clean images pay no extra processing.
+                scale = min(1.5, settings.OCR_CANVAS_SIZE / largest)
+                image = cv2.resize(
+                    image,
+                    (max(1, round(image.shape[1] * scale)), max(1, round(image.shape[0] * scale))),
+                    interpolation=cv2.INTER_CUBIC,
+                )
             candidate_transform = variants.get("original_transform")
             if candidate_transform:
                 candidate_transform = dict(candidate_transform)

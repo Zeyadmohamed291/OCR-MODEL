@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 # FastAPI Application Definition with comprehensive Swagger Metadata
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description=settings.PROJECT_DESCRIPTION + "\\n\\nThis API provides offline, CPU-bound Optical Character Recognition for Arabic and English.",
+    description=settings.PROJECT_DESCRIPTION + "\n\nThis API provides local Arabic and English optical character recognition.",
     version=settings.PROJECT_VERSION,
     lifespan=lifespan,
     contact={
@@ -67,8 +67,8 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=settings.CORS_ALLOW_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

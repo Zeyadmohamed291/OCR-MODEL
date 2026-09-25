@@ -120,46 +120,82 @@ def sort_line_bidi_runs(line: List[TextBlock], line_direction: str) -> List[Text
 def organize_reading_order(blocks: List[TextBlock], image_width: int = 0) -> List[TextBlock]:
     """
     Geometry-aware hierarchical reading order reconstruction.
-    1. Clusters text blocks into lines based on vertical overlap.
+    1. Clusters blocks into lines using Y-center proximity relative to median block height.
+       This is robust against tall/multi-line blocks that break overlap-based grouping.
     2. Sorts lines top-to-bottom.
-    3. Within each line, determines line direction (RTL or LTR).
-    4. Applies run-based Bidi sorting to preserve LTR runs (numbers, codes) inside RTL lines.
-    5. Sets raw_text, normalized_text, language, direction, line_number, and reading_order.
+    3. Within each line, determines direction (RTL or LTR).
+    4. Applies Bidi run sorting to preserve LTR runs (numbers, codes) inside RTL lines.
+    5. Sets raw_text, normalized_text, language, direction, line_number, reading_order.
     """
     if not blocks:
         return []
 
-    # Sort primarily from top to bottom
-    sorted_by_y = sorted(blocks, key=lambda b: get_block_bounds(b)[1])
+    # Pre-compute bounding boxes once for efficiency
+    bounds_cache = {id(b): get_block_bounds(b) for b in blocks}
 
-    # Cluster into lines using vertical overlap
+    # Sort top-to-bottom by the block's top edge
+    sorted_by_y = sorted(blocks, key=lambda b: bounds_cache[id(b)][1])
+
+    # ---------------------------------------------------------------
+    # Compute median block height — used as a global reference for
+    # deciding whether two blocks share the same visual line.
+    # Using median (not mean) prevents outlier tall blocks from skewing
+    # the threshold.
+    # ---------------------------------------------------------------
+    raw_heights = [
+        max(bounds_cache[id(b)][3] - bounds_cache[id(b)][1], 5.0)
+        for b in sorted_by_y
+    ]
+    raw_heights_sorted = sorted(raw_heights)
+    median_h = raw_heights_sorted[len(raw_heights_sorted) // 2]
+
+    # Two blocks belong to the same line if their Y-centers are within
+    # this fraction of the median line height.
+    LINE_CENTER_TOLERANCE = median_h * 0.65
+
+    # ---------------------------------------------------------------
+    # Cluster blocks into lines by Y-center proximity
+    # ---------------------------------------------------------------
     lines: List[List[TextBlock]] = []
     current_line: List[TextBlock] = []
-    current_line_y_min = get_block_bounds(sorted_by_y[0])[1]
-    current_line_y_max = get_block_bounds(sorted_by_y[0])[3]
+
+    first_b = bounds_cache[id(sorted_by_y[0])]
+    current_line_center_y = (first_b[1] + first_b[3]) / 2.0
 
     for block in sorted_by_y:
-        b_min_x, b_min_y, b_max_x, b_max_y = get_block_bounds(block)
-        b_h = max(b_max_y - b_min_y, 10.0)
+        bx0, by0, bx1, by1 = bounds_cache[id(block)]
+        block_center_y = (by0 + by1) / 2.0
 
-        # Check vertical overlap with current line
-        overlap = max(0.0, min(current_line_y_max, b_max_y) - max(current_line_y_min, b_min_y))
-        min_h = min(b_h, max(current_line_y_max - current_line_y_min, 10.0))
-
-        if overlap >= (min_h * 0.35) or abs(((b_min_y + b_max_y)/2.0) - ((current_line_y_min + current_line_y_max)/2.0)) < (min_h * 0.5):
+        if abs(block_center_y - current_line_center_y) <= LINE_CENTER_TOLERANCE:
             current_line.append(block)
-            current_line_y_min = min(current_line_y_min, b_min_y)
-            current_line_y_max = max(current_line_y_max, b_max_y)
+            # Recalculate line center as the mean of all member centers
+            centers = [
+                (bounds_cache[id(b)][1] + bounds_cache[id(b)][3]) / 2.0
+                for b in current_line
+            ]
+            current_line_center_y = sum(centers) / len(centers)
         else:
             if current_line:
                 lines.append(current_line)
             current_line = [block]
-            current_line_y_min = b_min_y
-            current_line_y_max = b_max_y
+            current_line_center_y = block_center_y
 
     if current_line:
         lines.append(current_line)
 
+    # ---------------------------------------------------------------
+    # Sort lines top-to-bottom by their average Y-center
+    # ---------------------------------------------------------------
+    lines.sort(
+        key=lambda ln: sum(
+            (bounds_cache[id(b)][1] + bounds_cache[id(b)][3]) / 2.0
+            for b in ln
+        ) / max(len(ln), 1)
+    )
+
+    # ---------------------------------------------------------------
+    # Within each line apply Bidi run sorting; assign metadata
+    # ---------------------------------------------------------------
     final_blocks: List[TextBlock] = []
     reading_order_idx = 1
 
@@ -168,16 +204,12 @@ def organize_reading_order(blocks: List[TextBlock], image_width: int = 0) -> Lis
         ordered_line = sort_line_bidi_runs(line, line_direction)
 
         for block in ordered_line:
-            # Preserve raw text exactly as detected
             if not block.raw_text:
                 block.raw_text = block.text
             block.normalized_text = normalize_logical_text(block.text)
-            
-            # Linguistic and directional classification
             block.script = LanguageDetector.detect_script(block.text)
             block.language, _, _ = LanguageDetector.detect(block.text)
             block.direction = LanguageDetector.detect_direction(block.text)
-            
             block.line_number = line_idx
             block.line = line_idx
             block.reading_order = reading_order_idx
