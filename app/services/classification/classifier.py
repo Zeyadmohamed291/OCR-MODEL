@@ -144,6 +144,24 @@ class UniversalDocumentClassifier:
                         scores[cat] += 1.4
                         signals_detected.append(f"kw_{cat}:{kw}")
 
+        # Egyptian ID templates often contain only field labels (the card in
+        # the upload can be blank), and EasyOCR may split or slightly misread
+        # the title. Classify from the combination of printed ID-card labels
+        # instead of requiring one exact title phrase or filled-in ID number.
+        id_label_anchors = [
+            "الرقم القومي", "الاسم الاول", "الأسم الاول", "باقي الاسم",
+            "محل الاقامة", "محل الإقامة", "تاريخ الميلاد", "تاريخ الاصدار",
+            "تاريخ الإصدار", "رقم المصنع", "تاريخ الانتهاء", "الحالة الاجتماعية",
+        ]
+        matched_id_anchors = [anchor for anchor in id_label_anchors if anchor in lower]
+        if len(matched_id_anchors) >= 3:
+            scores["id_card"] += 3.0
+            signals_detected.append(f"egyptian_id_field_labels_{len(matched_id_anchors)}")
+                else:
+                    if kw in lower:
+                        scores[cat] += 1.4
+                        signals_detected.append(f"kw_{cat}:{kw}")
+
         # High-specificity contextual combinations
         if ("@gmail.com" in lower or "@yahoo.com" in lower or "linkedin.com" in lower or "github.com" in lower) and ("experience" in lower or "education" in lower or "الخبرات" in lower):
             scores["cv"] += 2.5
